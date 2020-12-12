@@ -304,7 +304,7 @@ class BertSelfAttention(nn.Module):
         context_layer = context_layer.view(*new_context_layer_shape)
 
         outputs = (context_layer, attention_probs) if output_attentions else (context_layer,)
-        outputs = outputs + (value_layer,) if output_values else outputs
+        if output_values: outputs += (value_layer,)
 
         return outputs
 
