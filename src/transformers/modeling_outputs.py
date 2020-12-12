@@ -169,6 +169,7 @@ class BaseModelOutputWithPoolingAndCrossAttentions(ModelOutput):
     hidden_states: Optional[Tuple[torch.FloatTensor]] = None
     attentions: Optional[Tuple[torch.FloatTensor]] = None
     cross_attentions: Optional[Tuple[torch.FloatTensor]] = None
+    values: Optional[Tuple[torch.FloatTensor]] = None
 
 
 @dataclass
