@@ -162,7 +162,7 @@ class Attention(nn.Module):
         self.n_head = self.n_head - len(heads)
         self.pruned_heads = self.pruned_heads.union(heads)
 
-    def _attn(self, q, k, v, attention_mask=None, head_mask=None, output_attentions=False):
+    def _attn(self, q, k, v, attention_mask=None, head_mask=None, output_attentions=False, output_values=False):
         w = torch.matmul(q, k)
         if self.scale:
             w = w / (float(v.size(-1)) ** 0.5)
@@ -187,6 +187,8 @@ class Attention(nn.Module):
         outputs = [torch.matmul(w, v)]
         if output_attentions:
             outputs.append(w)
+        if output_values:
+            outputs.append(v)
         return outputs
 
     def merge_heads(self, x):
@@ -212,6 +214,7 @@ class Attention(nn.Module):
         encoder_attention_mask=None,
         use_cache=False,
         output_attentions=False,
+        output_values=False,
     ):
         if encoder_hidden_states is not None:
             assert hasattr(
@@ -236,7 +239,7 @@ class Attention(nn.Module):
         else:
             present = (None,)
 
-        attn_outputs = self._attn(query, key, value, attention_mask, head_mask, output_attentions)
+        attn_outputs = self._attn(query, key, value, attention_mask, head_mask, output_attentions, output_values)
         a = attn_outputs[0]
 
         a = self.merge_heads(a)
@@ -285,6 +288,7 @@ class Block(nn.Module):
         encoder_attention_mask=None,
         use_cache=False,
         output_attentions=False,
+        output_values=False,
     ):
         attn_outputs = self.attn(
             self.ln_1(hidden_states),
@@ -293,6 +297,7 @@ class Block(nn.Module):
             head_mask=head_mask,
             use_cache=use_cache,
             output_attentions=output_attentions,
+            output_values=output_values,
         )
         attn_output = attn_outputs[0]  # output_attn: a, present, (attentions)
         outputs = attn_outputs[1:]
@@ -311,6 +316,7 @@ class Block(nn.Module):
                 encoder_hidden_states=encoder_hidden_states,
                 encoder_attention_mask=encoder_attention_mask,
                 output_attentions=output_attentions,
+                output_values=output_values,
             )
             attn_output = cross_attn_outputs[0]
             # residual connection
@@ -322,7 +328,7 @@ class Block(nn.Module):
         hidden_states = hidden_states + feed_forward_hidden_states
 
         outputs = [hidden_states] + outputs
-        return outputs  # hidden_states, present, (attentions, cross_attentions)
+        return outputs  # hidden_states, present, (attentions, cross_attentions), values
 
 
 class GPT2PreTrainedModel(PreTrainedModel):
@@ -604,10 +610,12 @@ class GPT2Model(GPT2PreTrainedModel):
         encoder_attention_mask=None,
         use_cache=None,
         output_attentions=None,
+        output_values=None,
         output_hidden_states=None,
         return_dict=None,
     ):
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
+        output_values = output_values if output_values is not None else self.config.output_values
         output_hidden_states = (
             output_hidden_states if output_hidden_states is not None else self.config.output_hidden_states
         )
@@ -692,6 +700,7 @@ class GPT2Model(GPT2PreTrainedModel):
 
         presents = () if use_cache else None
         all_self_attentions = () if output_attentions else None
+        all_values = () if output_values else None
         all_cross_attentions = () if output_attentions and self.config.add_cross_attention else None
         all_hidden_states = () if output_hidden_states else None
         for i, (block, layer_past) in enumerate(zip(self.h, past_key_values)):
@@ -738,6 +747,7 @@ class GPT2Model(GPT2PreTrainedModel):
                     encoder_attention_mask=encoder_attention_mask,
                     use_cache=use_cache,
                     output_attentions=output_attentions,
+                    output_values=output_values,
                 )
 
             hidden_states, present = outputs[:2]
@@ -748,6 +758,9 @@ class GPT2Model(GPT2PreTrainedModel):
                 all_self_attentions = all_self_attentions + (outputs[2],)
                 if self.config.add_cross_attention:
                     all_cross_attentions = all_cross_attentions + (outputs[3],)
+
+            if output_values:
+                all_values += (outputs[-1],)
 
             # Model Parallel: If it's the last layer for that device, put things on the next device
             if self.model_parallel:
@@ -770,6 +783,7 @@ class GPT2Model(GPT2PreTrainedModel):
             past_key_values=presents,
             hidden_states=all_hidden_states,
             attentions=all_self_attentions,
+            values=all_values,
             cross_attentions=all_cross_attentions,
         )
 
@@ -1134,6 +1148,7 @@ class GPT2ForSequenceClassification(GPT2PreTrainedModel):
         labels=None,
         use_cache=None,
         output_attentions=None,
+        output_values=None,
         output_hidden_states=None,
         return_dict=None,
     ):
@@ -1155,6 +1170,7 @@ class GPT2ForSequenceClassification(GPT2PreTrainedModel):
             inputs_embeds=inputs_embeds,
             use_cache=use_cache,
             output_attentions=output_attentions,
+            output_values=output_values,
             output_hidden_states=output_hidden_states,
             return_dict=return_dict,
         )
@@ -1203,4 +1219,5 @@ class GPT2ForSequenceClassification(GPT2PreTrainedModel):
             past_key_values=transformer_outputs.past_key_values,
             hidden_states=transformer_outputs.hidden_states,
             attentions=transformer_outputs.attentions,
+            values=transformer_outputs.values
         )
