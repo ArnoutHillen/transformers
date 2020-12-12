@@ -34,10 +34,27 @@ from transformers.models.gpt2.tokenization_gpt2 import GPT2Tokenizer
 from transformers.models.xlnet.modeling_xlnet import XLNetModel
 from transformers.models.xlnet.tokenization_xlnet import XLNetTokenizer
 
-# XLNet
+# # XLNet
+# if __name__ == "__main__":
+#     model = XLNetModel.from_pretrained("xlnet-base-cased", output_attentions=True, output_values=True)
+#     tokenizer = XLNetTokenizer.from_pretrained("xlnet-base-cased")
+#     inputs = tokenizer("Hello, I'm Arnout Hillen", return_tensors="pt")
+#     outputs = model(**inputs)
+#     print(len(outputs["values"]))
+#     print(outputs["values"][0].shape)
+#     values = outputs["values"]
+#     values = torch.stack(values).squeeze()
+#     values = values.detach().numpy()
+#     print(values.shape)
+
+
+from transformers.models.electra.modeling_electra import ElectraModel
+from transformers.models.electra.tokenization_electra import ElectraTokenizer
+
+# ELECTRA
 if __name__ == "__main__":
-    model = XLNetModel.from_pretrained("xlnet-base-cased", output_attentions=True, output_values=True)
-    tokenizer = XLNetTokenizer.from_pretrained("xlnet-base-cased")
+    model = ElectraModel.from_pretrained("google/electra-base-discriminator", output_attentions=True, output_values=True)
+    tokenizer = ElectraTokenizer.from_pretrained("google/electra-base-discriminator")
     inputs = tokenizer("Hello, I'm Arnout Hillen", return_tensors="pt")
     outputs = model(**inputs)
     print(len(outputs["values"]))
