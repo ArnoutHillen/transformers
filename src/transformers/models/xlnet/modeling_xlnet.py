@@ -1297,10 +1297,6 @@ class XLNetModel(XLNetPreTrainedModel):
                 attentions = tuple(t.permute(2, 3, 0, 1).contiguous() for t in attentions)
 
         if output_values:
-            print(type(values))
-            print(len(values))
-            print(type(values[0]))
-            print(values[0].shape)
             values = tuple(v.permute(1, 2, 0, 3).contiguous() for v in values) # same as permutation of hidden states
 
         if not return_dict:
