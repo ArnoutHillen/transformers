@@ -277,7 +277,6 @@ class XLNetRelativeAttention(nn.Module):
         attn_mask=None,
         head_mask=None,
         output_attentions=False,
-        output_values=False,
     ):
         """Core relative positional attention operations."""
 
@@ -344,6 +343,7 @@ class XLNetRelativeAttention(nn.Module):
         target_mapping=None,
         head_mask=None,
         output_attentions=False,
+        output_values=False,
     ):
         if g is not None:
             # Two-stream attention with relative positional encoding.
@@ -465,6 +465,8 @@ class XLNetRelativeAttention(nn.Module):
         outputs = (output_h, output_g)
         if output_attentions:
             outputs = outputs + (attn_prob,)
+        if output_values:
+            outputs += (v_head_h,)
         return outputs
 
 
@@ -535,7 +537,7 @@ class XLNetLayer(nn.Module):
             )
         output_h = apply_chunking_to_forward(self.ff_chunk, self.chunk_size_feed_forward, self.seq_len_dim, output_h)
 
-        outputs = (output_h, output_g) + outputs[2:]  # Add again attentions if there are there
+        outputs = (output_h, output_g) + outputs[2:]  # Add again attentions if there are there (and values)
         return outputs
 
     def ff_chunk(self, output_x):
@@ -1295,7 +1297,11 @@ class XLNetModel(XLNetPreTrainedModel):
                 attentions = tuple(t.permute(2, 3, 0, 1).contiguous() for t in attentions)
 
         if output_values:
-            values = tuple(v.permute(1, 0, 2).contiguous() for v in values) # same as permutation of hidden states
+            print(type(values))
+            print(len(values))
+            print(type(values[0]))
+            print(values[0].shape)
+            values = tuple(v.permute(1, 2, 0, 3).contiguous() for v in values) # same as permutation of hidden states
 
         if not return_dict:
             return tuple(v for v in [output, new_mems, hidden_states, attentions] if v is not None)
