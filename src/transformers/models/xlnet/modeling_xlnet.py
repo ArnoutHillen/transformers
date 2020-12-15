@@ -515,6 +515,7 @@ class XLNetLayer(nn.Module):
         head_mask=None,
         output_attentions=False,
         output_values=False,
+        output_dense=False,
     ):
         outputs = self.rel_attn(
             output_h,
@@ -528,6 +529,7 @@ class XLNetLayer(nn.Module):
             head_mask=head_mask,
             output_attentions=output_attentions,
             output_values=output_values,
+            output_dense=output_dense,
         )
         output_h, output_g = outputs[:2]
 
@@ -616,6 +618,7 @@ class XLNetModelOutput(ModelOutput):
     hidden_states: Optional[Tuple[torch.FloatTensor]] = None
     attentions: Optional[Tuple[torch.FloatTensor]] = None
     values: Optional[Tuple[torch.FloatTensor]] = None
+    dense: Optional[Tuple[torch.FloatTensor]] = None
 
 
 @dataclass
@@ -1090,6 +1093,7 @@ class XLNetModel(XLNetPreTrainedModel):
         use_mems=None,
         output_attentions=None,
         output_values=None,
+        output_dense=None,
         output_hidden_states=None,
         return_dict=None,
         **kwargs,  # delete after depreciation warning is removed
@@ -1097,6 +1101,7 @@ class XLNetModel(XLNetPreTrainedModel):
 
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
         output_values = output_values if output_values is not None else self.config.output_values
+        output_dense = output_dense if output_dense is not None else self.config.output_dense
         output_hidden_states = (
             output_hidden_states if output_hidden_states is not None else self.config.output_hidden_states
         )
@@ -1242,6 +1247,7 @@ class XLNetModel(XLNetPreTrainedModel):
 
         attentions = [] if output_attentions else None
         values = [] if output_values else None
+        dense = [] if output_dense else None
         hidden_states = [] if output_hidden_states else None
         for i, layer_module in enumerate(self.layer):
             if use_mems:
@@ -1261,13 +1267,16 @@ class XLNetModel(XLNetPreTrainedModel):
                 target_mapping=target_mapping,
                 head_mask=head_mask[i],
                 output_attentions=output_attentions,
-                output_values=output_values
+                output_values=output_values,
+                output_dense=output_dense,
             )
             output_h, output_g = outputs[:2]
             if output_attentions:
                 attentions.append(outputs[2])
             if output_values:
-                values.append(outputs[-1])
+                values.append(outputs[-2])
+            if output_dense:
+                dense.append(outputs[-1])
 
         # Add last hidden state
         if output_hidden_states:
@@ -1297,13 +1306,16 @@ class XLNetModel(XLNetPreTrainedModel):
                 attentions = tuple(t.permute(2, 3, 0, 1).contiguous() for t in attentions)
 
         if output_values:
-            values = tuple(v.permute(1, 2, 0, 3).contiguous() for v in values) # same as permutation of hidden states
+            values = tuple(v.permute(1, 2, 0, 3).contiguous() for v in values)
+
+        if output_dense:
+            pass
 
         if not return_dict:
             return tuple(v for v in [output, new_mems, hidden_states, attentions] if v is not None)
 
         return XLNetModelOutput(
-            last_hidden_state=output, mems=new_mems, hidden_states=hidden_states, attentions=attentions, values=values,
+            last_hidden_state=output, mems=new_mems, hidden_states=hidden_states, attentions=attentions, values=values, dense=dense,
         )
 
 

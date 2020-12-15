@@ -357,6 +357,7 @@ class BertAttention(nn.Module):
         encoder_attention_mask=None,
         output_attentions=False,
         output_values=False,
+        output_dense=False,
     ):
         self_outputs = self.self(
             hidden_states,
@@ -369,6 +370,7 @@ class BertAttention(nn.Module):
         )
         attention_output = self.output(self_outputs[0], hidden_states)
         outputs = (attention_output,) + self_outputs[1:]  # add attentions if we output them
+        if output_dense: outputs += (self.output.dense,)
         return outputs
 
 
@@ -424,6 +426,7 @@ class BertLayer(nn.Module):
         encoder_attention_mask=None,
         output_attentions=False,
         output_values=False,
+        output_dense=False,
     ):
         self_attention_outputs = self.attention(
             hidden_states,
@@ -431,6 +434,7 @@ class BertLayer(nn.Module):
             head_mask,
             output_attentions=output_attentions,
             output_values=output_values,
+            output_dense=output_dense,
         )
         attention_output = self_attention_outputs[0]
         outputs = self_attention_outputs[1:]  # add self attentions if we output attention weights
@@ -477,12 +481,14 @@ class BertEncoder(nn.Module):
         encoder_attention_mask=None,
         output_attentions=False,
         output_values=False,
+        output_dense=False,
         output_hidden_states=False,
         return_dict=True,
     ):
         all_hidden_states = () if output_hidden_states else None
         all_self_attentions = () if output_attentions else None
         all_values = () if output_values else None
+        all_dense = () if output_dense else None
         all_cross_attentions = () if output_attentions and self.config.add_cross_attention else None
         for i, layer_module in enumerate(self.layer):
             if output_hidden_states:
@@ -515,6 +521,7 @@ class BertEncoder(nn.Module):
                     encoder_attention_mask,
                     output_attentions,
                     output_values,
+                    output_dense,
                 )
             hidden_states = layer_outputs[0]
             if output_attentions:
@@ -523,6 +530,8 @@ class BertEncoder(nn.Module):
                     all_cross_attentions = all_cross_attentions + (layer_outputs[2],)
             if output_values:
                 all_values = all_values + (layer_outputs[2],)
+            if output_dense:
+                all_dense = all_dense + (layer_outputs[3],)
 
         if output_hidden_states:
             all_hidden_states = all_hidden_states + (hidden_states,)
@@ -530,7 +539,7 @@ class BertEncoder(nn.Module):
         if not return_dict:
             return tuple(
                 v
-                for v in [hidden_states, all_hidden_states, all_self_attentions, all_cross_attentions, all_values]
+                for v in [hidden_states, all_hidden_states, all_self_attentions, all_cross_attentions, all_values, all_dense]
                 if v is not None
             )
         return BaseModelOutputWithCrossAttentions(
@@ -539,6 +548,7 @@ class BertEncoder(nn.Module):
             attentions=all_self_attentions,
             cross_attentions=all_cross_attentions,
             values=all_values,
+            dense=all_dense,
         )
 
 
@@ -815,6 +825,7 @@ class BertModel(BertPreTrainedModel):
         encoder_attention_mask=None,
         output_attentions=None,
         output_values=None,
+        output_dense=None,
         output_hidden_states=None,
         return_dict=None,
     ):
@@ -831,6 +842,7 @@ class BertModel(BertPreTrainedModel):
         """
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
         output_values = output_values if output_values is not None else self.config.output_values
+        output_dense = output_dense if output_dense is not None else self.config.output_dense
         output_hidden_states = (
             output_hidden_states if output_hidden_states is not None else self.config.output_hidden_states
         )
@@ -885,6 +897,7 @@ class BertModel(BertPreTrainedModel):
             encoder_attention_mask=encoder_extended_attention_mask,
             output_attentions=output_attentions,
             output_values=output_values,
+            output_dense=output_dense,
             output_hidden_states=output_hidden_states,
             return_dict=return_dict,
         )
@@ -901,6 +914,7 @@ class BertModel(BertPreTrainedModel):
             attentions=encoder_outputs.attentions,
             cross_attentions=encoder_outputs.cross_attentions,
             values=encoder_outputs.values,
+            dense=encoder_outputs.dense,
         )
 
 

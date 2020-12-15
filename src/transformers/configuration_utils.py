@@ -173,6 +173,7 @@ class PretrainedConfig(object):
         self.output_hidden_states = kwargs.pop("output_hidden_states", False)
         self.output_attentions = kwargs.pop("output_attentions", False)
         self.output_values = kwargs.pop("output_values", False)
+        self.output_dense = kwargs.pop("output_dense", False)
         self.torchscript = kwargs.pop("torchscript", False)  # Only used by PyTorch models
         self.use_bfloat16 = kwargs.pop("use_bfloat16", False)
         self.pruned_heads = kwargs.pop("pruned_heads", {})

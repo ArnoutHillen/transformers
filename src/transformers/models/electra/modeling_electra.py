@@ -347,6 +347,7 @@ class ElectraAttention(nn.Module):
         encoder_attention_mask=None,
         output_attentions=False,
         output_values=False,
+        output_dense=False,
     ):
         self_outputs = self.self(
             hidden_states,
@@ -359,6 +360,8 @@ class ElectraAttention(nn.Module):
         )
         attention_output = self.output(self_outputs[0], hidden_states)
         outputs = (attention_output,) + self_outputs[1:]  # add attentions and values if we output them
+        if output_dense: outputs += (self.output.dense,)
+
         return outputs
 
 
@@ -417,6 +420,7 @@ class ElectraLayer(nn.Module):
         encoder_attention_mask=None,
         output_attentions=False,
         output_values=False,
+        output_dense=False,
     ):
         self_attention_outputs = self.attention(
             hidden_states,
@@ -424,6 +428,7 @@ class ElectraLayer(nn.Module):
             head_mask,
             output_attentions=output_attentions,
             output_values=output_values,
+            output_dense=output_dense,
         )
         attention_output = self_attention_outputs[0]
         outputs = self_attention_outputs[1:]  # add self attentions if we output attention weights
@@ -440,6 +445,7 @@ class ElectraLayer(nn.Module):
                 encoder_attention_mask,
                 output_attentions,
                 output_values,
+                otuput_dense,
             )
             attention_output = cross_attention_outputs[0]
             outputs = outputs + cross_attention_outputs[1:]  # add cross attentions if we output attention weights
@@ -472,12 +478,14 @@ class ElectraEncoder(nn.Module):
         encoder_attention_mask=None,
         output_attentions=False,
         output_values=False,
+        output_dense=False,
         output_hidden_states=False,
         return_dict=True,
     ):
         all_hidden_states = () if output_hidden_states else None
         all_self_attentions = () if output_attentions else None
         all_values = () if output_values else None
+        all_dense = () if output_dense else None
         all_cross_attentions = () if output_attentions and self.config.add_cross_attention else None
         for i, layer_module in enumerate(self.layer):
             if output_hidden_states:
@@ -510,6 +518,7 @@ class ElectraEncoder(nn.Module):
                     encoder_attention_mask,
                     output_attentions,
                     output_values,
+                    output_dense,
                 )
             hidden_states = layer_outputs[0]
             if output_attentions:
@@ -517,7 +526,9 @@ class ElectraEncoder(nn.Module):
                 if self.config.add_cross_attention:
                     all_cross_attentions = all_cross_attentions + (layer_outputs[2],)
             if output_values:
-                all_values += (layer_outputs[-1],)
+                all_values += (layer_outputs[-2],)
+            if output_dense:
+                all_dense += (layer_outputs[-1],)
 
         if output_hidden_states:
             all_hidden_states = all_hidden_states + (hidden_states,)
@@ -525,7 +536,7 @@ class ElectraEncoder(nn.Module):
         if not return_dict:
             return tuple(
                 v
-                for v in [hidden_states, all_hidden_states, all_self_attentions, all_cross_attentions, all_values]
+                for v in [hidden_states, all_hidden_states, all_self_attentions, all_cross_attentions, all_values, all_dense]
                 if v is not None
             )
         return BaseModelOutputWithCrossAttentions(
@@ -533,6 +544,7 @@ class ElectraEncoder(nn.Module):
             hidden_states=all_hidden_states,
             attentions=all_self_attentions,
             values=all_values,
+            dense=all_dense,
             cross_attentions=all_cross_attentions,
         )
 
@@ -756,11 +768,13 @@ class ElectraModel(ElectraPreTrainedModel):
         inputs_embeds=None,
         output_attentions=None,
         output_values=None,
+        output_dense=None,
         output_hidden_states=None,
         return_dict=None,
     ):
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
         output_values = output_values if output_values is not None else self.config.output_values
+        output_dense = output_dense if output_dense is not None else self.config.output_dense
         output_hidden_states = (
             output_hidden_states if output_hidden_states is not None else self.config.output_hidden_states
         )
@@ -798,6 +812,7 @@ class ElectraModel(ElectraPreTrainedModel):
             head_mask=head_mask,
             output_attentions=output_attentions,
             output_values=output_values,
+            output_dense=output_dense,
             output_hidden_states=output_hidden_states,
             return_dict=return_dict,
         )

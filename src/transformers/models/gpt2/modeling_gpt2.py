@@ -215,6 +215,7 @@ class Attention(nn.Module):
         use_cache=False,
         output_attentions=False,
         output_values=False,
+        output_dense=False,
     ):
         if encoder_hidden_states is not None:
             assert hasattr(
@@ -247,6 +248,7 @@ class Attention(nn.Module):
         a = self.resid_dropout(a)
 
         outputs = [a, present] + attn_outputs[1:]
+        if output_dense: outputs += [self.c_proj]
         return outputs  # a, present, (attentions)
 
 
@@ -289,6 +291,7 @@ class Block(nn.Module):
         use_cache=False,
         output_attentions=False,
         output_values=False,
+        output_dense=False,
     ):
         attn_outputs = self.attn(
             self.ln_1(hidden_states),
@@ -298,6 +301,7 @@ class Block(nn.Module):
             use_cache=use_cache,
             output_attentions=output_attentions,
             output_values=output_values,
+            output_dense=output_dense,
         )
         attn_output = attn_outputs[0]  # output_attn: a, present, (attentions)
         outputs = attn_outputs[1:]
@@ -317,6 +321,7 @@ class Block(nn.Module):
                 encoder_attention_mask=encoder_attention_mask,
                 output_attentions=output_attentions,
                 output_values=output_values,
+                output_dense=output_dense,
             )
             attn_output = cross_attn_outputs[0]
             # residual connection
@@ -328,7 +333,7 @@ class Block(nn.Module):
         hidden_states = hidden_states + feed_forward_hidden_states
 
         outputs = [hidden_states] + outputs
-        return outputs  # hidden_states, present, (attentions, cross_attentions), values
+        return outputs  # hidden_states, present, (attentions, cross_attentions), values, dense
 
 
 class GPT2PreTrainedModel(PreTrainedModel):
@@ -611,11 +616,13 @@ class GPT2Model(GPT2PreTrainedModel):
         use_cache=None,
         output_attentions=None,
         output_values=None,
+        output_dense=None,
         output_hidden_states=None,
         return_dict=None,
     ):
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
         output_values = output_values if output_values is not None else self.config.output_values
+        output_dense = output_dense if output_dense is not None else self.config.output_dense
         output_hidden_states = (
             output_hidden_states if output_hidden_states is not None else self.config.output_hidden_states
         )
@@ -701,6 +708,7 @@ class GPT2Model(GPT2PreTrainedModel):
         presents = () if use_cache else None
         all_self_attentions = () if output_attentions else None
         all_values = () if output_values else None
+        all_dense = () if output_dense else None
         all_cross_attentions = () if output_attentions and self.config.add_cross_attention else None
         all_hidden_states = () if output_hidden_states else None
         for i, (block, layer_past) in enumerate(zip(self.h, past_key_values)):
@@ -748,6 +756,7 @@ class GPT2Model(GPT2PreTrainedModel):
                     use_cache=use_cache,
                     output_attentions=output_attentions,
                     output_values=output_values,
+                    output_dense=output_dense,
                 )
 
             hidden_states, present = outputs[:2]
@@ -760,7 +769,10 @@ class GPT2Model(GPT2PreTrainedModel):
                     all_cross_attentions = all_cross_attentions + (outputs[3],)
 
             if output_values:
-                all_values += (outputs[-1],)
+                all_values += (outputs[-2],)
+
+            if output_dense:
+                all_dense += (outputs[-1],)
 
             # Model Parallel: If it's the last layer for that device, put things on the next device
             if self.model_parallel:
@@ -776,7 +788,7 @@ class GPT2Model(GPT2PreTrainedModel):
             all_hidden_states = all_hidden_states + (hidden_states,)
 
         if not return_dict:
-            return tuple(v for v in [hidden_states, presents, all_hidden_states, all_self_attentions] if v is not None)
+            return tuple(v for v in [hidden_states, presents, all_hidden_states, all_self_attentions, all_dense] if v is not None)
 
         return BaseModelOutputWithPastAndCrossAttentions(
             last_hidden_state=hidden_states,
@@ -784,6 +796,7 @@ class GPT2Model(GPT2PreTrainedModel):
             hidden_states=all_hidden_states,
             attentions=all_self_attentions,
             values=all_values,
+            dense=all_dense,
             cross_attentions=all_cross_attentions,
         )
 
