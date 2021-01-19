@@ -360,7 +360,8 @@ class ElectraAttention(nn.Module):
         )
         attention_output = self.output(self_outputs[0], hidden_states)
         outputs = (attention_output,) + self_outputs[1:]  # add attentions and values if we output them
-        if output_dense: outputs += (self.output.dense,)
+        if output_dense:
+            outputs += (self.output.dense,)
 
         return outputs
 

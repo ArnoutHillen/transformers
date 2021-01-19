@@ -65,9 +65,9 @@ if __name__ == "__main__":
     print(dense[0].weight.shape)
     print(dense[0].bias.shape)
 
-from transformers.models.electra.modeling_electra import ElectraModel
-from transformers.models.electra.tokenization_electra import ElectraTokenizer
-
+# from transformers.models.electra.modeling_electra import ElectraModel
+# from transformers.models.electra.tokenization_electra import ElectraTokenizer
+#
 # # ELECTRA
 # if __name__ == "__main__":
 #     model = ElectraModel.from_pretrained("google/electra-base-discriminator", output_attentions=True, output_values=True, output_dense=True)

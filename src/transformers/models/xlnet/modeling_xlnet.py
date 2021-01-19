@@ -529,7 +529,6 @@ class XLNetLayer(nn.Module):
             head_mask=head_mask,
             output_attentions=output_attentions,
             output_values=output_values,
-            output_dense=output_dense,
         )
         output_h, output_g = outputs[:2]
 
@@ -540,6 +539,10 @@ class XLNetLayer(nn.Module):
         output_h = apply_chunking_to_forward(self.ff_chunk, self.chunk_size_feed_forward, self.seq_len_dim, output_h)
 
         outputs = (output_h, output_g) + outputs[2:]  # Add again attentions if there are there (and values)
+
+        if output_dense:
+            outputs += (self.ff.layer_1,)
+
         return outputs
 
     def ff_chunk(self, output_x):

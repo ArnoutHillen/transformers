@@ -370,7 +370,9 @@ class BertAttention(nn.Module):
         )
         attention_output = self.output(self_outputs[0], hidden_states)
         outputs = (attention_output,) + self_outputs[1:]  # add attentions if we output them
-        if output_dense: outputs += (self.output.dense,)
+        if output_dense:
+            dense = self.output.dense
+            outputs += (dense,)
         return outputs
 
 
