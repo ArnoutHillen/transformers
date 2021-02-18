@@ -2,24 +2,43 @@ from transformers.models.bert.modeling_bert import BertModel
 from transformers.models.bert.tokenization_bert import BertTokenizer
 import torch
 
-# # BERT
-# if __name__ == "__main__":
-#     model = BertModel.from_pretrained("bert-base-cased", output_attentions=True, output_values=True, output_dense=True)
-#     tokenizer = BertTokenizer.from_pretrained("bert-base-cased")
-#     inputs = tokenizer("Hello", return_tensors="pt")
-#     outputs = model(**inputs)
-#     print(len(outputs["values"]))
-#     print(outputs["values"][0].shape)
-#     values = outputs["values"]
-#     values = torch.stack(values).squeeze()
-#     values = values.detach().numpy()
-#     print(values.shape)
-#     dense = outputs["dense"]
-#     print(type(dense))
-#     print(len(dense))
-#     print(type(dense[0]))
-#     print(dense[0].weight.shape)
-#     print(dense[0].bias.shape)
+####################
+# Helper functions #
+####################
+def process(t):
+    return torch.stack(t).squeeze().detach().numpy()
+
+# BERT
+if __name__ == "__main__":
+    model = BertModel.from_pretrained("bert-base-cased", output_attentions=True, output_values=True, output_dense=True, output_mlp_activations=True, output_q_activations=True, output_k_activations=True, output_v_activations=True)
+    tokenizer = BertTokenizer.from_pretrained("bert-base-cased")
+    inputs = tokenizer("Hello", return_tensors="pt")
+    print("### inputs ###")
+    print(inputs.items())
+    outputs = model(**inputs)
+    print("### values ###")
+    print(len(outputs["values"]))
+    print(outputs["values"][0].shape)
+    values = outputs["values"]
+    values = torch.stack(values).squeeze()
+    values = values.detach().numpy()
+    print(values.shape)
+    print("### dense ###")
+    dense = outputs["dense"]
+    print(type(dense))
+    print(len(dense))
+    print(type(dense[0]))
+    print(dense[0].weight.shape)
+    print(dense[0].bias.shape)
+    print(outputs.keys())
+    q,k,v = outputs["q_activations"], outputs["k_activations"], outputs["v_activations"]
+    q,k,v = process(q), process(k), process(v)
+    print(q.shape, k.shape, v.shape)
+    print("### mlp ###")
+    mlp = torch.stack(outputs["mlp_activations"]).squeeze()
+    #mlp = mlp.reshape((12,3,12,256))
+    #mlp = mlp.permute(0,2,1,3)
+    print(mlp.shape)
 
 from transformers.models.gpt2.modeling_gpt2 import GPT2Model
 from transformers.models.gpt2.tokenization_gpt2 import GPT2Tokenizer
@@ -43,27 +62,28 @@ from transformers.models.gpt2.tokenization_gpt2 import GPT2Tokenizer
 #     print(dense[0].weight.shape)
 #     print(dense[0].bias.shape)
 
-from transformers.models.xlnet.modeling_xlnet import XLNetModel
-from transformers.models.xlnet.tokenization_xlnet import XLNetTokenizer
 
-# XLNet
-if __name__ == "__main__":
-    model = XLNetModel.from_pretrained("xlnet-base-cased", output_attentions=True, output_values=True, output_dense=True)
-    tokenizer = XLNetTokenizer.from_pretrained("xlnet-base-cased")
-    inputs = tokenizer("Hello, I'm", return_tensors="pt")
-    outputs = model(**inputs)
-    print(len(outputs["values"]))
-    print(outputs["values"][0].shape)
-    values = outputs["values"]
-    values = torch.stack(values).squeeze()
-    values = values.detach().numpy()
-    print(values.shape)
-    dense = outputs["dense"]
-    print(type(dense))
-    print(len(dense))
-    print(type(dense[0]))
-    print(dense[0].weight.shape)
-    print(dense[0].bias.shape)
+# from transformers.models.xlnet.modeling_xlnet import XLNetModel
+# from transformers.models.xlnet.tokenization_xlnet import XLNetTokenizer
+#
+# # XLNet
+# if __name__ == "__main__":
+#     model = XLNetModel.from_pretrained("xlnet-base-cased", output_attentions=True, output_values=True, output_dense=True)
+#     tokenizer = XLNetTokenizer.from_pretrained("xlnet-base-cased")
+#     inputs = tokenizer("Hello, I'm", return_tensors="pt")
+#     outputs = model(**inputs)
+#     print(len(outputs["values"]))
+#     print(outputs["values"][0].shape)
+#     values = outputs["values"]
+#     values = torch.stack(values).squeeze()
+#     values = values.detach().numpy()
+#     print(values.shape)
+#     dense = outputs["dense"]
+#     print(type(dense))
+#     print(len(dense))
+#     print(type(dense[0]))
+#     print(dense[0].weight.shape)
+#     print(dense[0].bias.shape)
 
 # from transformers.models.electra.modeling_electra import ElectraModel
 # from transformers.models.electra.tokenization_electra import ElectraTokenizer

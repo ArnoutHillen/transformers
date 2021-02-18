@@ -132,6 +132,10 @@ class BaseModelOutputWithCrossAttentions(ModelOutput):
     cross_attentions: Optional[Tuple[torch.FloatTensor]] = None
     values: Optional[Tuple[torch.FloatTensor]] = None
     dense: Optional[Tuple[torch.FloatTensor]] = None
+    mlp_activations: Optional[Tuple[torch.FloatTensor]] = None
+    q_activations: Optional[Tuple[torch.FloatTensor]] = None
+    k_activations: Optional[Tuple[torch.FloatTensor]] = None
+    v_activations: Optional[Tuple[torch.FloatTensor]] = None
 
 
 @dataclass
@@ -172,6 +176,10 @@ class BaseModelOutputWithPoolingAndCrossAttentions(ModelOutput):
     cross_attentions: Optional[Tuple[torch.FloatTensor]] = None
     values: Optional[Tuple[torch.FloatTensor]] = None
     dense: Optional[Tuple[torch.FloatTensor]] = None
+    mlp_activations: Optional[Tuple[torch.FloatTensor]] = None
+    q_activations: Optional[Tuple[torch.FloatTensor]] = None
+    k_activations: Optional[Tuple[torch.FloatTensor]] = None
+    v_activations: Optional[Tuple[torch.FloatTensor]] = None
 
 @dataclass
 class BaseModelOutputWithPastAndCrossAttentions(ModelOutput):
