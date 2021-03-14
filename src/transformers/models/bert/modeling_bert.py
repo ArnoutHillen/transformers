@@ -410,13 +410,12 @@ class BertIntermediate(nn.Module):
             weight_mask *= neuron_mask
             bias_mask = torch.ones(self.dense.out_features)
             bias_mask *= neuron_mask
-            print("###")
             self.dense.weight.data *= weight_mask.T # The nn.Linear module stores the weight data transposed (i.e., y = xA^T + b)
-            print(self.dense.weight.data.shape)
-            print(self.dense.weight.data)
+            # print(self.dense.weight.data.shape)
+            # print(self.dense.weight.data)
             self.dense.bias.data *= bias_mask
-            print(self.dense.bias.data.shape)
-            print(self.dense.bias.data)
+            # print(self.dense.bias.data.shape)
+            # print(self.dense.bias.data)
             hidden_states = self.dense(hidden_states)
         hidden_states = self.intermediate_act_fn(hidden_states)
         return hidden_states
