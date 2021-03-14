@@ -20,7 +20,7 @@ import math
 import os
 import warnings
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List, Dict
 
 import torch
 import torch.utils.checkpoint
@@ -401,8 +401,23 @@ class BertIntermediate(nn.Module):
         else:
             self.intermediate_act_fn = config.hidden_act
 
-    def forward(self, hidden_states):
-        hidden_states = self.dense(hidden_states)
+    def forward(self, hidden_states, excluded_neurons:Tuple[int]=None):
+        if excluded_neurons is None:
+            hidden_states = self.dense(hidden_states)
+        else:
+            neuron_mask = torch.Tensor([False if i in excluded_neurons else True for i in range(self.dense.out_features)])
+            weight_mask = torch.ones(self.dense.in_features, self.dense.out_features)
+            weight_mask *= neuron_mask
+            bias_mask = torch.ones(self.dense.out_features)
+            bias_mask *= neuron_mask
+            print("###")
+            self.dense.weight.data *= weight_mask.T # The nn.Linear module stores the weight data transposed (i.e., y = xA^T + b)
+            print(self.dense.weight.data.shape)
+            print(self.dense.weight.data)
+            self.dense.bias.data *= bias_mask
+            print(self.dense.bias.data.shape)
+            print(self.dense.bias.data)
+            hidden_states = self.dense(hidden_states)
         hidden_states = self.intermediate_act_fn(hidden_states)
         return hidden_states
 
@@ -448,7 +463,8 @@ class BertLayer(nn.Module):
         output_mlp_activations=False,
         output_q_activations=False,
         output_k_activations=False,
-        output_v_activations=False
+        output_v_activations=False,
+        excluded_neurons=None,
     ):
         self_attention_outputs = self.attention(
             hidden_states,
@@ -479,16 +495,16 @@ class BertLayer(nn.Module):
             attention_output = cross_attention_outputs[0]
             outputs = outputs + cross_attention_outputs[1:]  # add cross attentions if we output attention weights
 
-        # layer_output, intermediate_output = apply_chunking_to_forward(
-        #     self.feed_forward_chunk, self.chunk_size_feed_forward, self.seq_len_dim, output_mlp_activations, attention_output
-        # )
-        layer_output, intermediate_output = self.feed_forward_chunk(attention_output, output_mlp_activations)
+        layer_output, intermediate_output = apply_chunking_to_forward(
+             self.feed_forward_chunk, self.chunk_size_feed_forward, self.seq_len_dim, output_mlp_activations, excluded_neurons, attention_output,
+        )
+        #layer_output, intermediate_output = self.feed_forward_chunk(attention_output, output_mlp_activations)
 
         outputs = (layer_output,) + outputs + (intermediate_output,)
         return outputs
 
-    def feed_forward_chunk(self, attention_output, output_mlp_activations):
-        intermediate_output = self.intermediate(attention_output)
+    def feed_forward_chunk(self, attention_output, output_mlp_activations, excluded_neurons):
+        intermediate_output = self.intermediate(attention_output, excluded_neurons)
         layer_output = self.output(intermediate_output, attention_output)
         if output_mlp_activations:
             return layer_output, intermediate_output
@@ -516,7 +532,8 @@ class BertEncoder(nn.Module):
         output_mlp_activations=False,
         output_q_activations=False,
         output_k_activations=False,
-        output_v_activations=False
+        output_v_activations=False,
+        excluded_neurons:Dict[int, Tuple[int]]=None,
     ):
         all_hidden_states = () if output_hidden_states else None
         all_self_attentions = () if output_attentions else None
@@ -526,6 +543,7 @@ class BertEncoder(nn.Module):
         all_q_activations = () if output_q_activations else None
         all_k_activations = () if output_k_activations else None
         all_v_activations = () if output_v_activations else None
+        excluded_neurons = excluded_neurons if excluded_neurons is not None else dict()
         all_cross_attentions = () if output_attentions and self.config.add_cross_attention else None
         for i, layer_module in enumerate(self.layer):
             if output_hidden_states:
@@ -562,7 +580,8 @@ class BertEncoder(nn.Module):
                     output_mlp_activations,
                     output_q_activations,
                     output_k_activations,
-                    output_v_activations
+                    output_v_activations,
+                    excluded_neurons[i] if i in excluded_neurons else None,
                 )
             hidden_states = layer_outputs[0]
             if output_attentions:
@@ -884,7 +903,8 @@ class BertModel(BertPreTrainedModel):
         output_mlp_activations=None,
         output_q_activations=None,
         output_k_activations=None,
-        output_v_activations=None
+        output_v_activations=None,
+        excluded_neurons=None,
     ):
         r"""
         encoder_hidden_states  (:obj:`torch.FloatTensor` of shape :obj:`(batch_size, sequence_length, hidden_size)`, `optional`):
@@ -908,7 +928,7 @@ class BertModel(BertPreTrainedModel):
         output_q_activations = output_q_activations if output_q_activations is not None else self.config.output_q_activations
         output_k_activations = output_k_activations if output_k_activations is not None else self.config.output_k_activations
         output_v_activations = output_v_activations if output_v_activations is not None else self.config.output_v_activations
-
+        excluded_neurons = excluded_neurons if excluded_neurons is not None else self.config.excluded_neurons
 
         if input_ids is not None and inputs_embeds is not None:
             raise ValueError("You cannot specify both input_ids and inputs_embeds at the same time")
@@ -966,6 +986,7 @@ class BertModel(BertPreTrainedModel):
             output_q_activations=output_q_activations,
             output_k_activations=output_k_activations,
             output_v_activations=output_v_activations,
+            excluded_neurons=excluded_neurons,
         )
         sequence_output = encoder_outputs[0]
         pooled_output = self.pooler(sequence_output) if self.pooler is not None else None

@@ -10,7 +10,8 @@ def process(t):
 
 # BERT
 if __name__ == "__main__":
-    model = BertModel.from_pretrained("bert-base-cased", output_attentions=True, output_values=True, output_dense=True, output_mlp_activations=True, output_q_activations=True, output_k_activations=True, output_v_activations=True)
+    excluded_neurons = {0:(0,), 1:(0,1), 2:(0,1,2)}
+    model = BertModel.from_pretrained("bert-base-cased", output_attentions=True, output_values=True, output_dense=True, output_mlp_activations=True, output_q_activations=True, output_k_activations=True, output_v_activations=True, excluded_neurons=excluded_neurons)
     tokenizer = BertTokenizer.from_pretrained("bert-base-cased")
     inputs = tokenizer("Hello", return_tensors="pt")
     print("### inputs ###")
@@ -36,9 +37,9 @@ if __name__ == "__main__":
     print(q.shape, k.shape, v.shape)
     print("### mlp ###")
     mlp = torch.stack(outputs["mlp_activations"]).squeeze()
-    #mlp = mlp.reshape((12,3,12,256))
-    #mlp = mlp.permute(0,2,1,3)
     print(mlp.shape)
+    print(mlp[:,0].shape)
+
 
 from transformers.models.gpt2.modeling_gpt2 import GPT2Model
 from transformers.models.gpt2.tokenization_gpt2 import GPT2Tokenizer

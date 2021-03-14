@@ -1706,7 +1706,7 @@ def prune_layer(
 
 
 def apply_chunking_to_forward(
-    forward_fn: Callable[..., torch.Tensor], chunk_size: int, chunk_dim: int, output_mlp_activations: bool, *input_tensors
+    forward_fn: Callable[..., torch.Tensor], chunk_size: int, chunk_dim: int, output_mlp_activations: bool, excluded_neurons: Optional[Tuple[int]], *input_tensors
 ) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
     """
     This function chunks the :obj:`input_tensors` into smaller input tensor parts of size :obj:`chunk_size` over the
@@ -1748,10 +1748,10 @@ def apply_chunking_to_forward(
     ), "All input tensors have to be of the same shape"
 
     # inspect.signature exist since python 3.5 and is a python method -> no problem with backward compatibility
-    num_args_in_forward_chunk_fn = len(inspect.signature(forward_fn).parameters)
-    assert num_args_in_forward_chunk_fn == len(input_tensors) or num_args_in_forward_chunk_fn == len(input_tensors) + 1, "forward_chunk_fn expects {} arguments, but only {} input tensors are given".format(
-        num_args_in_forward_chunk_fn, len(input_tensors)
-    )
+    # num_args_in_forward_chunk_fn = len(inspect.signature(forward_fn).parameters)
+    # assert num_args_in_forward_chunk_fn == len(input_tensors) or num_args_in_forward_chunk_fn == len(input_tensors) + 1, "forward_chunk_fn expects {} arguments, but only {} input tensors are given".format(
+    #     num_args_in_forward_chunk_fn, len(input_tensors)
+    # )
 
     if chunk_size > 0:
         assert (
@@ -1765,14 +1765,14 @@ def apply_chunking_to_forward(
         # chunk input tensor into tuples
         input_tensors_chunks = tuple(input_tensor.chunk(num_chunks, dim=chunk_dim) for input_tensor in input_tensors)
         # apply forward fn to every tuple (changed by
-        output_chunks = tuple(forward_fn(*input_tensors_chunk, output_mlp_activations)[0] for input_tensors_chunk in zip(*input_tensors_chunks))
+        output_chunks = tuple(forward_fn(*input_tensors_chunk, output_mlp_activations, excluded_neurons)[0] for input_tensors_chunk in zip(*input_tensors_chunks))
 
-        # added by arnout hillen
-        mlp_act_chunks = tuple(forward_fn(*input_tensors_chunk, output_mlp_activations)[1] for input_tensors_chunk in zip(*input_tensors_chunks))
+        # Added by Arnout Hillen.
+        mlp_act_chunks = tuple(forward_fn(*input_tensors_chunk, output_mlp_activations, excluded_neurons)[1] for input_tensors_chunk in zip(*input_tensors_chunks))
         if output_mlp_activations:
-            return torch.cat(output_chunks, chunk_dim), torch.cat(mlp_act_chunks, chunk_dim)
+            return torch.cat(output_chunks, dim=chunk_dim), torch.cat(mlp_act_chunks, dim=chunk_dim)
 
         # concatenate output at same dimension
         return torch.cat(output_chunks, dim=chunk_dim)
 
-    return forward_fn(*input_tensors)
+    return forward_fn(*input_tensors, output_mlp_activations=output_mlp_activations, excluded_neurons=excluded_neurons)
