@@ -1,4 +1,4 @@
-Changes are made to the [BERT model](), [GPT-2](), [XLNet]() and [ELECTRA]().
+Changes are made to [BERT](), [GPT-2](), [XLNet]() and [ELECTRA]().
 
 ## Steps to extract information from the models.
 
