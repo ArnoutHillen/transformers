@@ -31,7 +31,7 @@ model = ElectraTokenizer.from_pretrained("google/electra-base-discriminator")
   - Query, key and value vectors: key is "q_activations", "k_activations", "v_activations"
   - Linear transformation: key is "dense"
 ```python
-input = <input sentence>
+input = "An input sentence"
 inputs = tokenizer(input, return_tensors="pt")
 outputs = model(**inputs)
 # Attention weights
