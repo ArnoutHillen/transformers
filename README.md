@@ -13,7 +13,7 @@ pip install git+https://github.com/ArnoutHillen/transformers
   - Linear transformation (W_o): output_dense=True
   - Multilayer perceptron activations (for BERT): output_mlp_activations=True
 ```python
-info = {"output_attentions":True,"ouput_q_values":True,"output_k_values":True,"output_v_values":True,"output_dense":True,"output_mlp_activations":True} # output_mlp_activations, output_q_values and output_k_values currently only for BERT (attention weights are used instead of the dot product of q and k for the other models).
+info = {"output_attentions":True,"ouput_q_values":True,"output_k_values":True,"output_v_values":True,"output_dense":True,"output_mlp_activations":True} # output_mlp_activations, output_q_values and output_k_values currently only for BERT (attention weights were used directly for the other models, instead of the query and keys).
 # BERT
 tokenizer = BertTokenzier.from_pretrained("bert-base-cased")
 model = BertModel.from_pretrained("bert-base-cased",**info)
