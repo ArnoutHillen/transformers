@@ -1,4 +1,4 @@
-Changes are made to [BERT](), [GPT-2](), [XLNet]() and [ELECTRA]().
+Changes are made to [BERT](https://github.com/ArnoutHillen/transformers/blob/master/src/transformers/models/bert/modeling_bert.py), [GPT-2](https://github.com/ArnoutHillen/transformers/blob/master/src/transformers/models/gpt2/modeling_gpt2.py), [XLNet](https://github.com/ArnoutHillen/transformers/blob/master/src/transformers/models/xlnet/modeling_xlnet.py) and [ELECTRA](https://github.com/ArnoutHillen/transformers/blob/master/src/transformers/models/electra/modeling_electra.py).
 
 ## Steps to extract information from the models.
 
@@ -11,19 +11,21 @@ pip install git+https://github.com/ArnoutHillen/transformers
   - Attention weights: output_attentions=True
   - Query, key and value vectors: output_q_values=True, output_k_values=True and output_v_values=True
   - Linear transformation (W_o): output_dense=True
+  - Multilayer perceptron activations (for BERT): output_mlp_activations=True
 ```python
+info = {"output_attentions":True,"ouput_q_values":True,"output_k_values":True,"output_v_values":True,"output_dense":True,"output_mlp_activations":True} // output_mlp_activations currently only for BERT.
 # BERT
 tokenizer = BertTokenzier.from_pretrained("bert-base-cased")
-model = BertModel.from_pretrained("bert-base-cased")
+model = BertModel.from_pretrained("bert-base-cased",**info)
 # GPT-2
 tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
-model = GPT2Model.from_pretrained("gpt2")
+model = GPT2Model.from_pretrained("gpt2",**info)
 # XLNet
 tokenizer = XLNetTokenizer.from_pretrained("xlnet-base-cased")
-model = XLNetModel.from_pretrained("xlnet-base-cased")
+model = XLNetModel.from_pretrained("xlnet-base-cased",**info)
 # ELECTRA
 tokenizer = ElectraModel.from_pretrained("google/electra-base-discriminator")
-model = ElectraTokenizer.from_pretrained("google/electra-base-discriminator")
+model = ElectraTokenizer.from_pretrained("google/electra-base-discriminator",**info)
 ```
 
 - Extract the information from the output
